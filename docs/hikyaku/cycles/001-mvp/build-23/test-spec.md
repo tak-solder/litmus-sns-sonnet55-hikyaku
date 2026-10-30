@@ -5,7 +5,7 @@
 issue.md の受け入れ基準の番号は次のとおり。
 - issue 基準1: cdk synth とスナップショット
 - issue 基準2: web / api 各2タスク以上、2AZ 分散
-- issue 基準3: RDS Multi-AZ と pg_bigm
+- issue 基準3: RDS Multi-AZ とパラメータグループ（pg_bigm は preload せずマイグレーションに任せる）
 - issue 基準4: 秘密情報が Secrets Manager 経由で、コードに平文が無い
 
 ## loadConfig（infra/lib/config.ts）
@@ -148,11 +148,11 @@ issue.md の受け入れ基準の番号は次のとおり。
 - When: 合成する
 - Then: `AWS::RDS::DBParameterGroup` が 1 つで、`Family` が `postgres17` である
 
-### constructor: shared_preload_libraries に pg_bigm が含まれる
+### constructor: shared_preload_libraries を設定しない
 - 対応: issue 基準3: RDS Multi-AZ と pg_bigm
 - Given: `DatabaseStack`
 - When: 合成する
-- Then: `DBParameterGroup` の `Parameters["shared_preload_libraries"]` が `pg_bigm` を含む
+- Then: `DBParameterGroup` の `Parameters` に `shared_preload_libraries` が無い（pg_bigm はマイグレーションの `CREATE EXTENSION` で有効にする。未検証の設定を入れない）
 
 ### constructor: DBInstance がそのパラメータグループを参照する
 - 対応: issue 基準3: RDS Multi-AZ と pg_bigm

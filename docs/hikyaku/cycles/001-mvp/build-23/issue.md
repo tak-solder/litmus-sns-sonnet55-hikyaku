@@ -3,7 +3,7 @@
 ## やること
 
 - `infra/` に AWS CDK（TypeScript）のプロジェクトを作り、`pnpm-workspace.yaml` に追加する
-- VPC（2 AZ、パブリック/プライベートサブネット、NAT）、RDS PostgreSQL（Multi-AZ。pg_bigm を有効にするパラメータグループ）、ECR、ECS クラスター、Fargate の web / api サービス（各2タスク以上、オートスケール）、ALB、Secrets Manager をコード化する
+- VPC（2 AZ、パブリック/プライベートサブネット、NAT）、RDS PostgreSQL（Multi-AZ。pg_bigm は build-01 のマイグレーションで有効にする）、ECR、ECS クラスター、Fargate の web / api サービス（各2タスク以上、オートスケール）、ALB、Secrets Manager をコード化する
 - ECS サービスは ECR のイメージタグをパラメータで受け取る（イメージ自体は build-27 が作り、build-24 が push する）
 - CDK のスナップショットテストを用意する
 
@@ -21,7 +21,7 @@
 
 - [ ] `cdk synth` が通り、スナップショットテストが通る
 - [ ] web / api が各2タスク以上、2 つの AZ に分散する設定になっている
-- [ ] RDS が Multi-AZ で、pg_bigm の読み込み設定を含む
+- [ ] RDS が Multi-AZ で、パラメータグループが postgres17 family である（pg_bigm は `shared_preload_libraries` に入れず、マイグレーションの `CREATE EXTENSION` に任せる。RDS の pg_bigm サポートは未検証で、handoff.md に残す）
 - [ ] 秘密情報が Secrets Manager 経由で渡され、コードに含まれない
 
 ## 参照する設計ドキュメント

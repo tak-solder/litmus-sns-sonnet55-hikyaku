@@ -85,7 +85,7 @@ export class ServiceStack extends Stack {
 - web と api はそれぞれ別の SG を持つ。DB の 5432 は api の SG だけに許可する（web は DB に触らない）。
 - ALB のリスナールールは `/api/*` を api、それ以外を web に振る（パスは `EnvConfig.apiPathPattern`、既定 `/api/*`。build-24 の CloudFront と合わせる）。ALB の SG は 80 を全許可で作り、CloudFront 経由に限る制限は build-24 で足す（handoff.md に申し送る）。ヘルスチェックは api が `/health`、web が `/`。
 - api のコンテナへ `DATABASE_URL` を組み立てるための接続情報を Secrets Manager から注入する（`ecs.Secret.fromSecretsManager`）。プレーンな環境変数に秘密を置かない。
-- RDS のパラメータグループは family `postgres17`。pg_bigm を `shared_preload_libraries` に含める。
+- RDS のパラメータグループは family `postgres17`。`shared_preload_libraries` には pg_bigm を入れない（未検証の設定でデプロイが失敗する危険を避ける。G8 で委任された判断）。pg_bigm は build-01 のマイグレーション（`CREATE EXTENSION IF NOT EXISTS pg_bigm`）だけで有効にし、パラメータグループは `rds.force_ssl=1` だけの最小設定にする。
 - `apps/api` が読む環境変数は `DATABASE_URL` と `PORT` のみ（`config.ts` を確認済み）。DB の接続文字列は Secret の host / port / username / password / dbname から ECS の container secrets で個別に渡し、api 起動時の組み立て（`sslmode=require` を含む。RDS は ssl 必須）は build-24 のデプロイ設計で扱い、handoff.md に申し送る。このビルドでは接続情報を container secrets の `DB_HOST` / `DB_PORT` / `DB_USERNAME` / `DB_PASSWORD` / `DB_NAME` で渡すところまでとする。DB の Secret は RDS が自動生成する Secret（`GenerateSecretString` 方式、`ManageMasterUserPassword` は使わない）。環境変数（非秘密）は `PORT` だけを注入する（api は 8080、web は 3000）。web には secrets を渡さない。
 
 ## 非機能要件
@@ -137,9 +137,9 @@ export class ServiceStack extends Stack {
 - [ ] Step 3: `network-stack.ts` と `ecr-stack.ts`
 - [ ] Step 4: `database-stack.ts`（Multi-AZ、パラメータグループ、Secret、SG）
 - [ ] Step 5: `alb.ts` と `service-stack.ts`（Fargate web / api、オートスケール、container secrets）
-- [ ] Step 6: `test/stacks.test.ts`（スナップショットと、AZ 分散・Multi-AZ・pg_bigm・Secrets 経由・DB の 5432 の許可元が service SG のみ、の個別アサーション）
+- [ ] Step 6: `test/stacks.test.ts`（スナップショットと、AZ 分散・Multi-AZ・Secrets 経由・DB の 5432 の許可元が service SG のみ、の個別アサーション）
 - [ ] Step 7: ローカル検証（`pnpm lint` / `pnpm typecheck` / `pnpm test` / `cdk synth`）
 
 ## 未検証の事項
 
-- RDS PostgreSQL 17 が pg_bigm を `shared_preload_libraries` で受け付けるかは、実環境で未確認（ADR search-pg-bigm のトレードオフ欄にある確認事項）。調査用の WebSearch が承認されなかったため確認できていない。非対応や不要な設定だった場合、デプロイ時に判明する。実装は設定をパラメータグループの 1 箇所に集め、変更しやすくする。結果は handoff.md に記す。
+- RDS PostgreSQL 17 が pg_bigm 拡張をサポートし、`CREATE EXTENSION` だけで使えるかは未検証（ADR search-pg-bigm のトレードオフ欄にある確認事項）。調査用の WebSearch が承認されず確認できていない。デプロイ時に判明する。handoff.md の「意図的に残した未対応」に残す。
