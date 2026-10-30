@@ -14,7 +14,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile.dev
     # 起動のたびに未適用のマイグレーションを適用する。失敗したら api は起動しない
-    command: sh -c "pnpm --filter api migrate && pnpm --filter api dev"
+    command: sh -c "pnpm --filter api migrate && exec pnpm --filter api dev"
     ports:
       - "8080:8080"
     environment:
