@@ -33,6 +33,8 @@ jobs:
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/litmus_sns
       - name: スキーマとマイグレーションの差分が無いことを確認する
+        # drizzle-kit は曖昧な変更（列名の変更など）で標準入力を待つため、ハングを短時間で失敗にする
+        timeout-minutes: 5
         run: |
           pnpm --filter api db:generate
           git diff --exit-code apps/api/drizzle
