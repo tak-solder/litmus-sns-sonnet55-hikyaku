@@ -92,6 +92,8 @@ describe("loadConfig", () => {
       { webDesiredCount: 4, maxTaskCount: 3 },
     ],
     ["imageTag が空", { imageTag: "" }],
+    ["region が空", { region: "" }],
+    ["dbInstanceClass が空", { dbInstanceClass: "" }],
   ])("%s のときエラーになる", (_name, context) => {
     expect(() => load(context)).toThrow();
   });
@@ -133,6 +135,7 @@ describe("EcrStack", () => {
     template.resourceCountIs("AWS::ECR::Repository", 2);
     for (const repo of resourcesOf(template, "AWS::ECR::Repository")) {
       expect(repo.Properties.ImageScanningConfiguration.ScanOnPush).toBe(true);
+      expect(repo.Properties.ImageTagMutability).toBe("IMMUTABLE");
       const policy = repo.Properties.LifecyclePolicy.LifecyclePolicyText;
       expect(policy).toContain("untagged");
       expect(policy).toContain("imageCountMoreThan");
@@ -254,6 +257,20 @@ describe("ServiceStack", () => {
       Memory: "1024",
       RequiresCompatibilities: ["FARGATE"],
     });
+  });
+
+  it("オートスケールの最小値が desiredCount に追従する", () => {
+    const template = templateOf(
+      build({ webDesiredCount: 3, apiDesiredCount: 4 }),
+      "LitmusService",
+    );
+    const mins = resourcesOf(
+      template,
+      "AWS::ApplicationAutoScaling::ScalableTarget",
+    )
+      .map((target) => target.Properties.MinCapacity)
+      .sort();
+    expect(mins).toEqual([3, 4]);
   });
 
   it("オートスケールが CPU 60% 目標で最小 2、最大 maxTaskCount", () => {

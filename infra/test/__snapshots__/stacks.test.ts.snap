@@ -245,6 +245,7 @@ exports[`app 全体 > スナップショットと一致し、決定的である 
         "ImageScanningConfiguration": {
           "ScanOnPush": true,
         },
+        "ImageTagMutability": "IMMUTABLE",
         "LifecyclePolicy": {
           "LifecyclePolicyText": "{"rules":[{"rulePriority":1,"description":"未タグのイメージを削除する","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countNumber":1,"countUnit":"days"},"action":{"type":"expire"}},{"rulePriority":2,"description":"最新のイメージだけを保持する","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":30},"action":{"type":"expire"}}]}",
         },
@@ -258,6 +259,7 @@ exports[`app 全体 > スナップショットと一致し、決定的である 
         "ImageScanningConfiguration": {
           "ScanOnPush": true,
         },
+        "ImageTagMutability": "IMMUTABLE",
         "LifecyclePolicy": {
           "LifecyclePolicyText": "{"rules":[{"rulePriority":1,"description":"未タグのイメージを削除する","selection":{"tagStatus":"untagged","countType":"sinceImagePushed","countNumber":1,"countUnit":"days"},"action":{"type":"expire"}},{"rulePriority":2,"description":"最新のイメージだけを保持する","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":30},"action":{"type":"expire"}}]}",
         },

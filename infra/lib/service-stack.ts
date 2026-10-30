@@ -6,7 +6,7 @@ import * as elbv2 from "aws-cdk-lib/aws-elasticloadbalancingv2";
 import * as logs from "aws-cdk-lib/aws-logs";
 import type { Construct } from "constructs";
 import { createAlb } from "./alb.js";
-import { type EnvConfig, MIN_DESIRED_COUNT } from "./config.js";
+import type { EnvConfig } from "./config.js";
 import { type DatabaseStack, DB_NAME } from "./database-stack.js";
 
 const WEB_PORT = 3000;
@@ -99,8 +99,16 @@ export class ServiceStack extends Stack {
       healthCheck: { path: "/health" },
     });
 
-    this.autoScale(this.webService, config.maxTaskCount);
-    this.autoScale(this.apiService, config.maxTaskCount);
+    this.autoScale(
+      this.webService,
+      config.webDesiredCount,
+      config.maxTaskCount,
+    );
+    this.autoScale(
+      this.apiService,
+      config.apiDesiredCount,
+      config.maxTaskCount,
+    );
   }
 
   private createService(
@@ -153,9 +161,14 @@ export class ServiceStack extends Stack {
     return { service, securityGroup };
   }
 
-  private autoScale(service: ecs.FargateService, maxTaskCount: number): void {
+  private autoScale(
+    service: ecs.FargateService,
+    desiredCount: number,
+    maxTaskCount: number,
+  ): void {
     const scaling = service.autoScaleTaskCount({
-      minCapacity: MIN_DESIRED_COUNT,
+      // スケールインでも desiredCount を下回らせない（config で 2 以上に検証済み）
+      minCapacity: desiredCount,
       maxCapacity: maxTaskCount,
     });
     scaling.scaleOnCpuUtilization("Cpu", {

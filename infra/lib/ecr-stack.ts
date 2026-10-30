@@ -18,6 +18,8 @@ export class EcrStack extends Stack {
   private createRepository(id: string): ecr.Repository {
     return new ecr.Repository(this, id, {
       imageScanOnPush: true,
+      // タグの上書きで別のイメージが動くことを防ぐ（デプロイは commit SHA のタグで行う）
+      imageTagMutability: ecr.TagMutability.IMMUTABLE,
       removalPolicy: RemovalPolicy.RETAIN,
       lifecycleRules: [
         {

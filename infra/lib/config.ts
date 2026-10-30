@@ -58,19 +58,22 @@ export function loadConfig(app: App): EnvConfig {
     throw new Error("imageTag を空にはできません");
   }
 
+  const region = readString(app, "region", DEFAULTS.region);
+  const dbInstanceClass = readString(
+    app,
+    "dbInstanceClass",
+    DEFAULTS.dbInstanceClass,
+  );
+  if (region === "" || dbInstanceClass === "") {
+    throw new Error("region と dbInstanceClass を空にはできません");
+  }
+
   return {
-    env: {
-      account: process.env.CDK_DEFAULT_ACCOUNT,
-      region: readString(app, "region", DEFAULTS.region),
-    },
+    env: { account: process.env.CDK_DEFAULT_ACCOUNT, region },
     webDesiredCount,
     apiDesiredCount,
     maxTaskCount,
-    dbInstanceClass: readString(
-      app,
-      "dbInstanceClass",
-      DEFAULTS.dbInstanceClass,
-    ),
+    dbInstanceClass,
     apiPathPattern: readString(app, "apiPathPattern", DEFAULTS.apiPathPattern),
     imageTag,
   };

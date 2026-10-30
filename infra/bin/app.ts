@@ -1,3 +1,4 @@
+import { pathToFileURL } from "node:url";
 import { App } from "aws-cdk-lib";
 import { loadConfig } from "../lib/config.js";
 import { DatabaseStack } from "../lib/database-stack.js";
@@ -28,6 +29,9 @@ export function createApp(app = new App()): App {
 }
 
 // `cdk synth` からの実行時だけ合成する（テストから import しても動かない）
-if (process.argv[1]?.endsWith("app.ts")) {
+if (
+  process.argv[1] &&
+  import.meta.url === pathToFileURL(process.argv[1]).href
+) {
   createApp().synth();
 }
