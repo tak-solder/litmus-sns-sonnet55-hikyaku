@@ -5,6 +5,7 @@
       "**",
       "!**/.next",
       "!**/node_modules",
+      "!infra/cdk.out",
       "!apps/api/drizzle/meta",
       "!apps/web/public",
       "!.claude",
