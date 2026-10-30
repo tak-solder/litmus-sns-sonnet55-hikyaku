@@ -13,8 +13,13 @@ const STACKS = [
   "LitmusService",
 ] as const;
 
+// imageTag は必須（ECR のタグが不変なので既定値を持たない）
+const TEST_IMAGE_TAG = "0123abc";
+
 function build(context: Context = {}): App {
-  return createApp(new App({ context }));
+  return createApp(
+    new App({ context: { imageTag: TEST_IMAGE_TAG, ...context } }),
+  );
 }
 
 function templateOf(app: App, id: (typeof STACKS)[number]): Template {
@@ -42,9 +47,14 @@ beforeEach(() => {
 });
 
 describe("loadConfig", () => {
-  const load = (context: Context = {}) => loadConfig(new App({ context }));
+  const load = (context: Context = {}) =>
+    loadConfig(new App({ context: { imageTag: TEST_IMAGE_TAG, ...context } }));
 
-  it("context 未指定のとき既定値が返る", () => {
+  it("imageTag を指定しないとエラーになる", () => {
+    expect(() => loadConfig(new App())).toThrow(/imageTag/);
+  });
+
+  it("imageTag 以外が未指定のとき既定値が返る", () => {
     const config = load();
     expect(config).toMatchObject({
       env: { region: "ap-northeast-1" },
@@ -53,7 +63,7 @@ describe("loadConfig", () => {
       maxTaskCount: 6,
       dbInstanceClass: "t4g.medium",
       apiPathPattern: "/api/*",
-      imageTag: "latest",
+      imageTag: TEST_IMAGE_TAG,
     });
   });
 
@@ -294,17 +304,13 @@ describe("ServiceStack", () => {
     );
   });
 
-  it("イメージタグが config.imageTag から取られ、未指定なら latest になる", () => {
+  it("イメージタグが config.imageTag から取られる", () => {
     const tagged = templateOf(build({ imageTag: "v1.2.3" }), "LitmusService");
     for (const name of ["Web", "Api"] as const) {
       expect(JSON.stringify(containerOf(tagged, name).Image)).toContain(
         ":v1.2.3",
       );
     }
-    const defaults = templateOf(build(), "LitmusService");
-    expect(JSON.stringify(containerOf(defaults, "Api").Image)).toContain(
-      ":latest",
-    );
   });
 
   it("ALB のリスナールールが /api/* を api に、既定を web に振る", () => {

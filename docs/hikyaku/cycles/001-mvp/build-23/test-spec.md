@@ -14,7 +14,7 @@ issue.md の受け入れ基準の番号は次のとおり。
 - 対応: issue 基準2: web / api 各2タスク以上、2AZ 分散
 - Given: context を何も設定していない `new App()`
 - When: `loadConfig(app)` を呼ぶ
-- Then: `apiPathPattern` が `/api/*`、`env.region` が `ap-northeast-1`、`maxAzs` が 2、`webDesiredCount` が 2、`apiDesiredCount` が 2、`maxTaskCount` が 6、`dbInstanceClass` が `t4g.medium`、`imageTag` が `latest` である
+- Then: `apiPathPattern` が `/api/*`、`env.region` が `ap-northeast-1`、`maxAzs` が 2、`webDesiredCount` が 2、`apiDesiredCount` が 2、`maxTaskCount` が 6、`dbInstanceClass` が `t4g.medium`である（`imageTag` は必須なので、テストでは固定のタグを渡す）
 
 ### loadConfig: context で上書きした値が反映される
 - 対応: —
@@ -278,11 +278,11 @@ issue.md の受け入れ基準の番号は次のとおり。
 - When: 合成する
 - Then: TaskDefinition の `ContainerDefinitions[0].Image` が、web / api それぞれの ECR リポジトリ URI と `:v1.2.3` を連結した形を含む
 
-### constructor: imageTag 未指定のとき latest になる
+### loadConfig: imageTag 未指定のときエラーになる
 - 対応: —
-- Given: context に `imageTag` が無い config
-- When: 合成する
-- Then: `Image` が `:latest` で終わる
+- Given: context に `imageTag` が無い App
+- When: `loadConfig(app)` を呼ぶ
+- Then: `imageTag` に言及する Error が投げられる（ECR のタグが不変なので既定値を持たない）
 
 ### constructor: ALB のリスナールールが /api/* を api に、既定を web に振る
 - 対応: —

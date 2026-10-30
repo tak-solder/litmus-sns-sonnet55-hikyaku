@@ -19,7 +19,6 @@ const DEFAULTS = {
   maxTaskCount: 6,
   dbInstanceClass: "t4g.medium",
   apiPathPattern: "/api/*",
-  imageTag: "latest",
 } as const;
 
 // context（`cdk synth -c key=value` を含む）から設定を読む。
@@ -53,9 +52,12 @@ export function loadConfig(app: App): EnvConfig {
     );
   }
 
-  const imageTag = readString(app, "imageTag", DEFAULTS.imageTag);
+  // ECR のタグは不変なので、既定値は置かない。デプロイは commit SHA を `-c imageTag=<sha>` で渡す
+  const imageTag = readString(app, "imageTag", "");
   if (imageTag === "") {
-    throw new Error("imageTag を空にはできません");
+    throw new Error(
+      "imageTag を指定してください（例: cdk synth -c imageTag=<commit SHA>）",
+    );
   }
 
   const region = readString(app, "region", DEFAULTS.region);

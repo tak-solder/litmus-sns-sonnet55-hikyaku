@@ -1109,7 +1109,7 @@ exports[`app 全体 > スナップショットと一致し、決定的である 
                   {
                     "Fn::ImportValue": "LitmusEcr:ExportsOutputRefApiRepoEFA7BA97FC7F6607",
                   },
-                  ":latest",
+                  ":0123abc",
                 ],
               ],
             },
@@ -1560,7 +1560,7 @@ exports[`app 全体 > スナップショットと一致し、決定的である 
                   {
                     "Fn::ImportValue": "LitmusEcr:ExportsOutputRefWebRepo9D56C0A3B9D0FCB6",
                   },
-                  ":latest",
+                  ":0123abc",
                 ],
               ],
             },

@@ -27,9 +27,10 @@ export type EnvConfig = {
   maxTaskCount: number;                         // オートスケール上限 既定 6
   dbInstanceClass: string;                      // 既定 "t4g.medium"
   apiPathPattern: string;                       // 既定 "/api/*"
-  imageTag: string;                             // context "imageTag"。既定 "latest"
+  imageTag: string;                             // context "imageTag"（必須）
 };
 export function loadConfig(app: App): EnvConfig;
+// imageTag は必須で既定値を持たない（ECR のタグが不変なので `latest` を使えない）。未指定は Error。
 // context キー: region, webDesiredCount, apiDesiredCount, maxTaskCount, dbInstanceClass, apiPathPattern, imageTag
 // （CLI の `-c` は文字列で来るので数値に変換する）。検証: desiredCount は 2 以上の整数、
 // maxTaskCount は desiredCount 以上の整数、imageTag は空でない。違反は Error を投げる（文言は固定しない）。
