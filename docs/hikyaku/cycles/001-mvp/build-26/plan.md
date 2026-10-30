@@ -39,6 +39,9 @@ export const requestId: MiddlewareHandler<RequestIdEnv>;
 ```ts
 export function errorBody(code: ErrorCode, message: string, fields?: Record<string, string[]>): ErrorResponse;
 export const onError: ErrorHandler<RequestIdEnv>;   // AppError / HTTPException / その他
+// HTTPException は status を ErrorCode に対応させる（400→validation_error / 401→unauthorized / 403→forbidden /
+// 404→not_found / 409→conflict）。ERROR_STATUS に無い status（405・413・422 など）は、
+// 4xx なら validation_error、5xx なら internal_error の code に寄せる。HTTP ステータスは元の値を保つ。
 export const notFoundHandler: NotFoundHandler<RequestIdEnv>;
 export const validationHook: Hook<unknown, RequestIdEnv, string, unknown>; // zod 検証失敗 → validation_error
 ```
@@ -55,7 +58,9 @@ export const OPENAPI_INFO: { title: string; version: string };
 
 ```ts
 export function createApp(): OpenAPIHono<RequestIdEnv>;
-// requestId → ルート（/health）→ GET /openapi.json（doc31）。onError / notFound を登録
+// requestId → ルート（/health）→ GET /openapi.json。onError / notFound を登録
+// /openapi.json は公開を前提とする。doc31 はリクエストごとに文書を生成しうるため使わず、
+// 自前ハンドラで初回に getOpenAPI31Document(OPENAPI_INFO) を生成してモジュール内に保持し、以降はそれを返す。
 export const app = createApp();
 ```
 
@@ -77,23 +82,23 @@ export function registerShutdown(server: { close(cb: (err?: Error) => void): unk
 // --check: 生成結果と既存ファイルを比較し、差があれば差分の有無を出力して exit 1（ファイルは書かない）
 ```
 
-ルート `package.json` に `"generate:api-client": "pnpm --filter api exec tsx ../../scripts/generate-api-client.ts"` を追加する（引数は `-- --check` で渡す）。`apps/api/tsconfig.json` の `include` に `../../scripts` を足して typecheck の対象にする。
+ルート `package.json` に `"generate:api-client": "pnpm --filter api exec tsx ../../scripts/generate-api-client.ts"` を追加する。`--check` は `pnpm generate:api-client --check` の形で渡す（CI も同じ表記）。出力先 `packages/api-client/schema.d.ts` は cwd に依存させず、スクリプト自身の位置（`import.meta.url`）を基準に解決する。`apps/api/tsconfig.json` の `include` に `../../scripts` を足して typecheck の対象にする。
 
 CI（`.github/workflows/ci.yml` の `check` ジョブ）に、`pnpm typecheck` の後へ `pnpm generate:api-client --check` のステップを追加する。
 
 ## 非機能要件
 
 - **セキュリティ**: 500 の応答に例外メッセージ・スタックを含めない（汎用メッセージのみ）。詳細はサーバーログに `requestId` 付きで出す。リクエスト ID は長さと文字種を制限し、ログ・ヘッダへの注入を防ぐ。`/openapi.json` は公開情報のみで認証情報を含まない
-- **パフォーマンス**: 仕様ドキュメントの生成はリクエストごとに行わず、ルート登録後の生成結果を使う
+- **パフォーマンス**: 仕様ドキュメントはリクエストごとに生成せず、初回生成した結果を保持して返す（`app.ts` の方針を参照）
 - **エラーハンドリング**: すべてのエラーを `{ error: { code, message, fields } }`（`fields` は無ければ `{}`）で返す。HTTP ステータスは shared の `ERROR_STATUS` に従う。zod 検証失敗は 400 `validation_error` で、`fields` はパス（`a.b.0`）をキー、メッセージ配列を値にする。不正な JSON ボディも 400。未定義パスは 404 `not_found`。想定外の例外は 500 `internal_error`
-- **マージ時点のデータ安全**: 該当なし。DB・マイグレーション・保存形式に触れない。公開 API は `/health`（応答形式を維持）と新設の `/openapi.json` のみで、既存の呼び出し元はない
+- **マージ時点のデータ安全**: DB・マイグレーション・保存形式に触れず、データは壊れない。公開 API は `/health`（応答形式を維持）と新設の `/openapi.json`（公開前提）のみで、既存の呼び出し元はない。挙動変更が 1 つある。`index.ts` が `loadConfig` を使うため、`DATABASE_URL` 未設定では起動が失敗する（従来は `PORT` だけで起動できた）。DB 接続自体は build-03 まで配線しない。`compose.yaml` と CI は `DATABASE_URL` を渡しているので影響しない
 
 ## BP見積もり
 
 | 段階 | BP |
 |------|----|
 | architectフェーズ段階 | 5BP |
-| builderフェーズ段階 | 5BP |
+| builderフェーズ段階 | 7BP |
 
 **作成するファイル**
 
@@ -115,18 +120,20 @@ CI（`.github/workflows/ci.yml` の `check` ジョブ）に、`pnpm typecheck` �
 | 項目 | 値 | BP |
 |------|----|----|
 | 新規ファイル数 | 10 | 3（ベース） |
-| 実装行数（テスト含む） | 450 | 2 |
+| 実装行数（テスト含む） | 525 | 3 |
 | API操作数 | 未指定 | — |
 | 画面/ページ数 | 未指定 | — |
 | DBテーブル/エンティティ数 | 未指定 | — |
 | ベースBP（指標の最大値） | — | 3 |
-| 影響ファイル数 | 6 | +1 |
+| 影響ファイル数 | 9 | +3 |
 | 基盤セットアップを含む | あり | +1 |
 | 外部API連携を含む | 未指定 | +0 |
 | 既存コードの大規模リファクタ | 未指定 | +0 |
-| **合計** | — | **5BP** |
+| **合計** | — | **7BP** |
 
-5BP は `bpMax − 2`（6）未満なので、分割は不要。
+影響ファイル数 9 は、変更する 6 件に加え、読んで影響を確認する `packages/shared/src/errors.ts`・`packages/shared/src/index.ts`・`apps/api/src/config.ts` を含めた数（`biome.json`・`compose.yaml`・build-02 の handoff.md は確認のみで数に入れない）。
+
+7BP は `bpMax − 2`（6）以上のため分割を検討したが、**分割せずに続行する**（監督判断）。`shutdown.ts` と `loadConfig` 化を切り出しても build-26 は 7BP のまま（新規 8 ファイル、約 425 行、影響 8 ファイル）で、切り出した側は 1BP にしかならない。BP が下がらないまま PR とセッションだけが増える。上限 8 の範囲内で、データ安全上の問題もない（開発基盤とエラー形式の追加のみ）。issue.md の見積もり（5BP）は architect 段階の値のまま残し、tasklist.md も変更しない。
 
 ## 実装ステップ
 
