@@ -87,9 +87,17 @@ export function createTestDatabase(): Promise<TestDatabase>;
 
 ## 実装ステップ
 
-- [ ] Step 1: 依存パッケージの追加（完了）
-- [ ] Step 2: `docker/Dockerfile.db`・`compose.yaml`（db / mailpit / minio。ポートは `127.0.0.1:` にバインド）・`.env.example`
-- [ ] Step 3: `config.ts`・`db/client.ts`・`db/schema/index.ts`・`drizzle.config.ts`
-- [ ] Step 4: `drizzle-kit generate --custom --name extensions` で `0000_extensions.sql` と `drizzle/meta/_journal.json`（journal に載らないと migrator が適用しない）を生成して SQL を書く。`db/migrate.ts`、compose の api 起動時マイグレーション
-- [ ] Step 5: `vitest.config.ts`・`test/db.ts`・`client.test.ts`
-- [ ] Step 6: ローカル検証（typecheck / test / `docker compose up`）
+- [x] Step 1: 依存パッケージの追加（完了）
+- [x] Step 2: `docker/Dockerfile.db`・`compose.yaml`（db / mailpit / minio。ポートは `127.0.0.1:` にバインド）・`.env.example`
+- [x] Step 3: `config.ts`・`db/client.ts`・`db/schema/index.ts`・`drizzle.config.ts`
+- [x] Step 4: `drizzle-kit generate --custom --name extensions` で `0000_extensions.sql` と `drizzle/meta/_journal.json`（journal に載らないと migrator が適用しない）を生成して SQL を書く。`db/migrate.ts`、compose の api 起動時マイグレーション
+- [x] Step 5: `vitest.config.ts`・`test/db.ts`・`client.test.ts`
+- [x] Step 6: ローカル検証（typecheck / test / `docker compose up`）
+
+## 実装中の計画からの差分
+
+- MinIO の公式イメージ（Docker Hub の `minio/minio`、quay.io）とバイナリ配布（dl.min.io は 410）が取得できなかったため、`docker/Dockerfile.minio` を追加し、コンソール付きの最後のリリース（`RELEASE.2025-04-22T22-12-26Z`）を Go でソースからビルドする。初回ビルドに約 1 分かかる
+- pg_bigm のビルドに `libicu-dev` が必要だった（`Dockerfile.db`）
+- `PGDATA` をボリューム配下のサブディレクトリにした（`initdb` が空でないディレクトリで失敗したため）
+- Mailpit のホスト側ポートは `MAILPIT_UI_PORT` / `MAILPIT_SMTP_PORT` で上書きできる（既定は 8025 / 1025）。他の compose プロジェクトと衝突するため
+- `config.test.ts` を追加した（`loadConfig` のテストを `client.test.ts` から分けた）
