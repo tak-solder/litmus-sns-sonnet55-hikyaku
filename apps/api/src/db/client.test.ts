@@ -6,7 +6,9 @@ import { createDb } from "./client.js";
 import { runMigrations } from "./migrate.js";
 
 const unreachableUrl = "postgres://postgres:postgres@localhost:1/none";
-const adminUrl = process.env.TEST_DATABASE_ADMIN_URL || "postgres://postgres:postgres@localhost:5432/postgres";
+const adminUrl =
+  process.env.TEST_DATABASE_ADMIN_URL ||
+  "postgres://postgres:postgres@localhost:5432/postgres";
 
 const created: TestDatabase[] = [];
 async function newTestDatabase() {
@@ -19,7 +21,11 @@ afterEach(async () => {
   await Promise.all(created.splice(0).map((database) => database.drop()));
 });
 
-async function query<T extends pg.QueryResultRow>(url: string, text: string, values: unknown[] = []) {
+async function query<T extends pg.QueryResultRow>(
+  url: string,
+  text: string,
+  values: unknown[] = [],
+) {
   const client = new pg.Client({ connectionString: url });
   await client.connect();
   try {
@@ -54,20 +60,29 @@ describe("createDb", () => {
 describe("runMigrations", () => {
   it("空の DB に pg_bigm 拡張が入る", async () => {
     const { url } = await newTestDatabase();
-    const rows = await query(url, "select extname from pg_extension where extname = 'pg_bigm'");
+    const rows = await query(
+      url,
+      "select extname from pg_extension where extname = 'pg_bigm'",
+    );
     expect(rows).toEqual([{ extname: "pg_bigm" }]);
   });
 
   it("2 回続けて実行しても成功する（冪等）", async () => {
     const { url } = await newTestDatabase();
     await expect(runMigrations(url)).resolves.toBeUndefined();
-    const rows = await query(url, "select extname from pg_extension where extname = 'pg_bigm'");
+    const rows = await query(
+      url,
+      "select extname from pg_extension where extname = 'pg_bigm'",
+    );
     expect(rows).toHaveLength(1);
   });
 
   it("業務テーブルを作らない", async () => {
     const { url } = await newTestDatabase();
-    const rows = await query(url, "select table_name from information_schema.tables where table_schema = 'public'");
+    const rows = await query(
+      url,
+      "select table_name from information_schema.tables where table_schema = 'public'",
+    );
     expect(rows).toHaveLength(0);
   });
 
@@ -83,8 +98,14 @@ describe("createTestDatabase", () => {
 
     const names = await Promise.all(
       [first, second].map(async ({ url }) => {
-        const [row] = await query<{ name: string }>(url, "select current_database() as name");
-        const extensions = await query(url, "select 1 from pg_extension where extname = 'pg_bigm'");
+        const [row] = await query<{ name: string }>(
+          url,
+          "select current_database() as name",
+        );
+        const extensions = await query(
+          url,
+          "select 1 from pg_extension where extname = 'pg_bigm'",
+        );
         expect(extensions).toHaveLength(1);
         expect(new URL(url).pathname).toBe(`/${row?.name}`);
         return row?.name;
@@ -100,7 +121,11 @@ describe("createTestDatabase", () => {
     await database.drop();
     await expect(database.drop()).resolves.toBeUndefined();
 
-    const rows = await query(adminUrl, "select 1 from pg_database where datname = $1", [name]);
+    const rows = await query(
+      adminUrl,
+      "select 1 from pg_database where datname = $1",
+      [name],
+    );
     expect(rows).toHaveLength(0);
   });
 
@@ -110,7 +135,8 @@ describe("createTestDatabase", () => {
       process.env.TEST_DATABASE_ADMIN_URL = adminUrl;
       await newTestDatabase();
 
-      process.env.TEST_DATABASE_ADMIN_URL = "postgres://postgres:postgres@localhost:1/postgres";
+      process.env.TEST_DATABASE_ADMIN_URL =
+        "postgres://postgres:postgres@localhost:1/postgres";
       await expect(createTestDatabase()).rejects.toThrow();
     } finally {
       if (original === undefined) delete process.env.TEST_DATABASE_ADMIN_URL;

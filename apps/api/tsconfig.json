@@ -9,8 +9,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "outDir": "dist",
-    "rootDir": "src",
+    "noEmit": true,
     "types": ["node"]
   },
   "include": ["src"]

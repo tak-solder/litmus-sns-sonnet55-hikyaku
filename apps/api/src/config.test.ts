@@ -5,7 +5,10 @@ const url = "postgres://postgres:postgres@localhost:5432/app";
 
 describe("loadConfig", () => {
   it("DATABASE_URL と PORT を指定した場合は指定値を返す", () => {
-    expect(loadConfig({ DATABASE_URL: url, PORT: "3000" })).toEqual({ databaseUrl: url, port: 3000 });
+    expect(loadConfig({ DATABASE_URL: url, PORT: "3000" })).toEqual({
+      databaseUrl: url,
+      port: 3000,
+    });
   });
 
   it("PORT 未指定なら既定値 8080 を使う", () => {
@@ -21,14 +24,23 @@ describe("loadConfig", () => {
   });
 
   it("PORT が数値でない場合は例外にする", () => {
-    expect(() => loadConfig({ DATABASE_URL: url, PORT: "abc" })).toThrow(/PORT/);
+    expect(() => loadConfig({ DATABASE_URL: url, PORT: "abc" })).toThrow(
+      /PORT/,
+    );
   });
 
-  it.each(["0", "65536", "-1", "3000abc", ""])("PORT が %j なら例外にする", (port) => {
-    expect(() => loadConfig({ DATABASE_URL: url, PORT: port })).toThrow(/PORT/);
-  });
+  it.each(["0", "65536", "-1", "3000abc", ""])(
+    "PORT が %j なら例外にする",
+    (port) => {
+      expect(() => loadConfig({ DATABASE_URL: url, PORT: port })).toThrow(
+        /PORT/,
+      );
+    },
+  );
 
   it.each(["1", "65535"])("PORT が %j なら数値で返す", (port) => {
-    expect(loadConfig({ DATABASE_URL: url, PORT: port }).port).toBe(Number(port));
+    expect(loadConfig({ DATABASE_URL: url, PORT: port }).port).toBe(
+      Number(port),
+    );
   });
 });

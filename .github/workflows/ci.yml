@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      # pnpm のバージョンは package.json の packageManager に従う
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      # pg_bigm 入りの db。公式の postgres サービスコンテナでは CREATE EXTENSION pg_bigm が通らない
+      - run: docker compose up -d --build --wait db
+      - name: マイグレーションを空の DB に適用する
+        run: pnpm --filter api migrate
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/litmus_sns
+      - name: スキーマとマイグレーションの差分が無いことを確認する
+        # drizzle-kit は曖昧な変更（列名の変更など）で標準入力を待つため、ハングを短時間で失敗にする
+        timeout-minutes: 5
+        run: |
+          pnpm --filter api db:generate
+          git diff --exit-code apps/api/drizzle
+          test -z "$(git ls-files --others --exclude-standard apps/api/drizzle)"
+      - run: pnpm test
+        env:
+          TEST_DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
