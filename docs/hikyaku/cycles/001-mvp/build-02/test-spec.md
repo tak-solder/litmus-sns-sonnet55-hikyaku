@@ -197,6 +197,12 @@ issue.md の受け入れ基準 2 項目との対応は、シナリオ名の末�
 - When: `docker compose up -d --build --wait db` と `pnpm --filter api migrate` のログを確認する
 - Then: db が healthy になり、migrate が `CREATE EXTENSION pg_bigm` を含めてエラーなく完了する
 
+### ci.yml: test ステップが起動した db に接続できる環境で実行される
+- 対応: —
+- Given: `ci.yml` の `pnpm test` ステップ
+- When: ステップの環境変数と、`apps/api/src/db/client.test.ts` の実行ログを確認する
+- Then: `TEST_DATABASE_ADMIN_URL` が既定値（`postgres://postgres:postgres@localhost:5432/postgres`）で解決でき、DB を使う既存テスト（`client.test.ts`）が skip されずに成功する
+
 ### ci.yml: lint 違反で CI が失敗する
 - 対応: —
 - Given: 検証用ブランチで、ダブルクォートをシングルクォートに変えたソースをコミットして PR を作る
@@ -253,9 +259,9 @@ issue.md の受け入れ基準 2 項目との対応は、シナリオ名の末�
 
 ### ローカル: lint の除外対象が lint されない
 - 対応: —
-- Given: `.next`、`apps/api/drizzle/meta`、`packages/api-client`、`pnpm-lock.yaml` に Biome の規則に違反する内容がある（または空ファイルを置く）
-- When: `pnpm lint` を実行する
-- Then: これらに対する指摘が出ない
+- Given: `apps/web/.next/x.ts`、`apps/api/drizzle/meta/x.ts`、`packages/api-client/x.ts`（存在しなければ一時作成する）に、シングルクォートの文字列 `const a = 'x'` を書いたファイルを置く
+- When: `pnpm lint` を実行し、確認後に一時ファイルを削除する
+- Then: これらのファイルに対する指摘が出ない（`pnpm-lock.yaml` は Biome の対象外拡張子なので別途確認しない）
 
 ### ローカル: lint 違反を検出する
 - 対応: —
