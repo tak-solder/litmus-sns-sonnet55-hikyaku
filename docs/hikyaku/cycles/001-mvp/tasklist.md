@@ -31,7 +31,7 @@
 | 20      | フォロー申請・フォロワー画面                  | 3  | 19, 7, 8           | [issue](./build-20/issue.md) | —                                                                      |
 | 21      | 検索画面                                      | 3  | 17, 14             | [issue](./build-21/issue.md) | —                                                                      |
 | 22      | 単体ページのCDNキャッシュ対応                 | 5  | 18                 | [issue](./build-22/issue.md) | —                                                                      |
-| 23      | インフラ: ネットワーク・DB・ECS               | 5  | 2                  | [issue](./build-23/issue.md) | —                                                                      |
+| 23      | インフラ: ネットワーク・DB・ECS               | 5  | 2                  | [issue](./build-23/issue.md) | [#7](https://github.com/tak-solder/litmus-sns-sonnet55-hikyaku/pull/7) |
 | 24      | インフラ: S3・CloudFront・SES・デプロイCI     | 5  | 22, 23, 27         | [issue](./build-24/issue.md) | —                                                                      |
 | 25      | README・性能テスト                            | 4  | 14, 22, 24, 21, 20 | [issue](./build-25/issue.md) | —                                                                      |
 | 26      | APIエラー形式・OpenAPI・クライアント生成      | 5  | 2                  | [issue](./build-26/issue.md) | —                                                                      |
@@ -97,7 +97,7 @@ graph TD
   b18 -.-> b22
   b02 --> b23
   b22 -.-> b24
-  b23 -.-> b24
+  b23 --> b24
   b27 -.-> b24
   b24 -.-> b25
   b21 -.-> b25
@@ -107,10 +107,10 @@ graph TD
   classDef merged fill:#fbefff,stroke:#8250df,color:#6639ba
   classDef ready fill:#dafbe1,stroke:#1a7f37,color:#116329
   classDef blocked fill:#f6f8fa,stroke:#8c959f,color:#57606a
-  class b01,b02 merged
-  class b23,b26,b27 ready
+  class b01,b02,b23 merged
+  class b26,b27 ready
   class b03,b04,b05,b06,b07,b08,b09,b10,b11,b12,b13,b14,b15,b16,b17,b18,b19,b20,b21,b22,b24,b25 blocked
-  linkStyle 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,29,30,31,32,33 stroke:#8c959f,stroke-dasharray:5 5
+  linkStyle 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,30,31,32,33 stroke:#8c959f,stroke-dasharray:5 5
 ```
 
 紫: 完了（merged） / 緑: 着手可能（ready） / グレー: 待機中（blocked）。点線は先行ビルドが未完了の依存
