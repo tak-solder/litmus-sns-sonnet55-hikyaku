@@ -30,6 +30,9 @@ export type EnvConfig = {
   imageTag: string;                             // context "imageTag"。既定 "latest"
 };
 export function loadConfig(app: App): EnvConfig;
+// context キー: region, webDesiredCount, apiDesiredCount, maxTaskCount, dbInstanceClass, apiPathPattern, imageTag
+// （CLI の `-c` は文字列で来るので数値に変換する）。検証: desiredCount は 2 以上の整数、
+// maxTaskCount は desiredCount 以上の整数、imageTag は空でない。違反は Error を投げる（文言は固定しない）。
 
 // infra/lib/network-stack.ts
 export class NetworkStack extends Stack {
@@ -83,7 +86,7 @@ export class ServiceStack extends Stack {
 - ALB のリスナールールは `/api/*` を api、それ以外を web に振る（パスは `EnvConfig.apiPathPattern`、既定 `/api/*`。build-24 の CloudFront と合わせる）。ALB の SG は 80 を全許可で作り、CloudFront 経由に限る制限は build-24 で足す（handoff.md に申し送る）。ヘルスチェックは api が `/health`、web が `/`。
 - api のコンテナへ `DATABASE_URL` を組み立てるための接続情報を Secrets Manager から注入する（`ecs.Secret.fromSecretsManager`）。プレーンな環境変数に秘密を置かない。
 - RDS のパラメータグループは family `postgres17`。pg_bigm を `shared_preload_libraries` に含める。
-- `apps/api` が読む環境変数は `DATABASE_URL` と `PORT` のみ（`config.ts` を確認済み）。DB の接続文字列は Secret の host / port / username / password / dbname から ECS の container secrets で個別に渡し、api 起動時の組み立て（`sslmode=require` を含む。RDS は ssl 必須）は build-24 のデプロイ設計で扱い、handoff.md に申し送る。このビルドでは接続情報の各フィールドを `DB_HOST` 等で渡すところまでとする。
+- `apps/api` が読む環境変数は `DATABASE_URL` と `PORT` のみ（`config.ts` を確認済み）。DB の接続文字列は Secret の host / port / username / password / dbname から ECS の container secrets で個別に渡し、api 起動時の組み立て（`sslmode=require` を含む。RDS は ssl 必須）は build-24 のデプロイ設計で扱い、handoff.md に申し送る。このビルドでは接続情報を container secrets の `DB_HOST` / `DB_PORT` / `DB_USERNAME` / `DB_PASSWORD` / `DB_NAME` で渡すところまでとする。DB の Secret は RDS が自動生成する Secret（`GenerateSecretString` 方式、`ManageMasterUserPassword` は使わない）。環境変数（非秘密）は `PORT` だけを注入する（api は 8080、web は 3000）。web には secrets を渡さない。
 
 ## 非機能要件
 

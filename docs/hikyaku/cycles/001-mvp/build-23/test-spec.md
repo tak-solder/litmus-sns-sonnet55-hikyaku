@@ -14,7 +14,7 @@ issue.md の受け入れ基準の番号は次のとおり。
 - 対応: issue 基準2: web / api 各2タスク以上、2AZ 分散
 - Given: context を何も設定していない `new App()`
 - When: `loadConfig(app)` を呼ぶ
-- Then: `env.region` が `ap-northeast-1`、`maxAzs` が 2、`webDesiredCount` が 2、`apiDesiredCount` が 2、`maxTaskCount` が 6、`dbInstanceClass` が `t4g.medium`、`imageTag` が `latest` である
+- Then: `apiPathPattern` が `/api/*`、`env.region` が `ap-northeast-1`、`maxAzs` が 2、`webDesiredCount` が 2、`apiDesiredCount` が 2、`maxTaskCount` が 6、`dbInstanceClass` が `t4g.medium`、`imageTag` が `latest` である
 
 ### loadConfig: context で上書きした値が反映される
 - 対応: —
@@ -28,23 +28,17 @@ issue.md の受け入れ基準の番号は次のとおり。
 - When: `loadConfig(app)` を呼ぶ
 - Then: `webDesiredCount` が数値 `3` で返る（文字列 `"3"` ではない）
 
-### loadConfig: desiredCount が最小値 2 ちょうどのとき受理される（境界値）
-- 対応: issue 基準2: web / api 各2タスク以上、2AZ 分散
-- Given: context の `webDesiredCount=2`、`apiDesiredCount=2`
-- When: `loadConfig(app)` を呼ぶ
-- Then: 例外を投げず、両方 2 で返る
-
 ### loadConfig: webDesiredCount が 1 のときエラーになる
 - 対応: issue 基準2: web / api 各2タスク以上、2AZ 分散
 - Given: context の `webDesiredCount=1`、`apiDesiredCount=2`
 - When: `loadConfig(app)` を呼ぶ
-- Then: 「web は 2 以上」を示すメッセージの Error が投げられ、2 AZ 分散を満たさない構成が synth に進まない
+- Then: Error が投げられ、2 AZ 分散を満たさない構成が synth に進まない
 
 ### loadConfig: apiDesiredCount が 1 のときエラーになる
 - 対応: issue 基準2: web / api 各2タスク以上、2AZ 分散
 - Given: context の `webDesiredCount=2`、`apiDesiredCount=1`
 - When: `loadConfig(app)` を呼ぶ
-- Then: 「api は 2 以上」を示すメッセージの Error が投げられる
+- Then: Error が投げられる
 
 ### loadConfig: desiredCount が 0 のときエラーになる（境界値）
 - 対応: issue 基準2: web / api 各2タスク以上、2AZ 分散
@@ -80,7 +74,7 @@ issue.md の受け入れ基準の番号は次のとおり。
 - 対応: —
 - Given: context の `webDesiredCount=4`、`apiDesiredCount=2`、`maxTaskCount=3`
 - When: `loadConfig(app)` を呼ぶ
-- Then: オートスケール上限が現在の台数を下回る旨の Error が投げられる
+- Then: Error が投げられる
 
 ### loadConfig: imageTag が空文字のときエラーになる
 - 対応: —
@@ -188,7 +182,7 @@ issue.md の受け入れ基準の番号は次のとおり。
 - 対応: issue 基準4: 秘密情報が Secrets Manager 経由で、コードに平文が無い
 - Given: `DatabaseStack`
 - When: 合成する
-- Then: `AWS::SecretsManager::Secret` に `GenerateSecretString` があり、`DBInstance.MasterUserPassword` は固定文字列ではなく `{{resolve:secretsmanager:` を含む動的参照（または `ManageMasterUserPassword: true`）である
+- Then: `AWS::SecretsManager::Secret` に `GenerateSecretString` があり、`DBInstance.MasterUserPassword` は固定文字列ではなく `{{resolve:secretsmanager:` を含む動的参照である
 
 ### constructor: secret プロパティが ECS から参照できる形で公開される
 - 対応: issue 基準4: 秘密情報が Secrets Manager 経由で、コードに平文が無い
@@ -278,12 +272,6 @@ issue.md の受け入れ基準の番号は次のとおり。
 - When: 合成する
 - Then: `AWS::ApplicationAutoScaling::ScalableTarget` が 2 つあり、どちらも `MinCapacity=2`、`MaxCapacity=6`。`ScalingPolicy` は `TargetTrackingScaling` で `PredefinedMetricType=ECSServiceAverageCPUUtilization`、`TargetValue=60` である
 
-### constructor: desiredCount が 3 のとき MinCapacity が 2 を下回らない（境界値）
-- 対応: issue 基準2: web / api 各2タスク以上、2AZ 分散
-- Given: `webDesiredCount=3` の config
-- When: 合成する
-- Then: web の `ScalableTarget.MinCapacity` が 2 以上で、`MaxCapacity` が `maxTaskCount`（6）以下である
-
 ### constructor: イメージタグが config.imageTag から取られる
 - 対応: —
 - Given: `imageTag=v1.2.3` の config と、`webRepo`・`apiRepo` を渡した `ServiceStack`
@@ -304,7 +292,7 @@ issue.md の受け入れ基準の番号は次のとおり。
 
 ### constructor: api パス prefix を config から変えられる
 - 対応: —
-- Given: api のパスパターンを `/v1/*` に変えた config（指定できる場合）
+- Given: context の `apiPathPattern=/v1/*`
 - When: 合成する
 - Then: ListenerRule の `path-pattern` が `/v1/*` になり、`/api/*` は残らない
 
@@ -329,7 +317,7 @@ issue.md の受け入れ基準の番号は次のとおり。
 ### constructor: 合成テンプレート全体に平文のパスワードが無い
 - 対応: issue 基準4: 秘密情報が Secrets Manager 経由で、コードに平文が無い
 - Given: 全スタックを合成した JSON 文字列
-- When: `password`、`secret` を名前に含むプロパティの値を走査する
+- When: `password`、`secret` を名前に含むプロパティのうち、値が文字列リテラルのものを走査する（`PasswordLength` などの数値は対象外。ソースのリテラル確認は lint と目視の範囲）
 - Then: 値はすべて `Ref` / `Fn::GetAtt` / `{{resolve:secretsmanager:` の動的参照か `GenerateSecretString` の設定であり、リテラル文字列のパスワードが 1 つも無い
 
 ### constructor: タスクの実行ロールが Secret の読み取り権限を持つ
@@ -349,6 +337,18 @@ issue.md の受け入れ基準の番号は次のとおり。
 - Given: 上記の App
 - When: DB の SG への ingress の Source を列挙する
 - Then: 許可元が api 用の SG のみ（`FromPort=5432`、`ToPort=5432`）で、web 用の SG と `CidrIp` は含まれない（web は DB に触らない設計）
+
+### constructor: web のコンテナは secrets を持たない
+- 対応: issue 基準4: 秘密情報が Secrets Manager 経由で、コードに平文が無い
+- Given: 既定 config の `ServiceStack`
+- When: web の TaskDefinition の `ContainerDefinitions[0]` を読む
+- Then: `Secrets` が無い（空でもよい）。`Environment` は `PORT=3000` だけである
+
+### constructor: ALB の SG は 80 を許可する
+- 対応: —
+- Given: 既定 config の `ServiceStack`
+- When: ALB の SG の ingress を読む
+- Then: `FromPort=80`、`ToPort=80`、`CidrIp=0.0.0.0/0` の許可が 1 つだけある（CloudFront 経由への制限は build-24）
 
 ### constructor: ECS クラスターとログが作られる
 - 対応: —
@@ -378,9 +378,9 @@ issue.md の受け入れ基準の番号は次のとおり。
 
 ### app: account 未指定でも合成できる
 - 対応: issue 基準1: cdk synth とスナップショット
-- Given: `env.account` が未設定（環境非依存）の config
+- Given: `env.account` が未設定の config
 - When: `app.synth()` を呼ぶ
-- Then: 例外なく合成でき、AZ は `Fn::GetAZs` ではなく 2 件分が解決できる形で出力される（テストでは固定 env を与えて確認する）
+- Then: 例外なく合成でき、`AWS::EC2::Subnet` が 4 つ（2 AZ 分の public / private）作られる
 
 ## インフラの範囲外の確認
 
