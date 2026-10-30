@@ -40,3 +40,5 @@ jobs:
           git diff --exit-code apps/api/drizzle
           test -z "$(git ls-files --others --exclude-standard apps/api/drizzle)"
       - run: pnpm test
+        env:
+          TEST_DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/postgres
