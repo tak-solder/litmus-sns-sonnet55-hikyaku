@@ -17,7 +17,8 @@
 ```ts
 // apps/api/src/config.ts
 export type Config = { databaseUrl: string; port: number };
-export function loadConfig(env?: NodeJS.ProcessEnv): Config; // DATABASE_URL が無ければ throw
+export function loadConfig(env?: NodeJS.ProcessEnv): Config;
+// DATABASE_URL が未設定・空文字なら throw。PORT は未指定なら 8080、指定時は 1〜65535 の整数でなければ throw
 
 // apps/api/src/db/client.ts
 export type Database = NodePgDatabase<typeof schema>;
@@ -50,7 +51,8 @@ export function createTestDatabase(): Promise<TestDatabase>;
 
 ## 非機能要件
 
-- **セキュリティ**: 認証情報はローカル開発専用の固定値で、`.env.example` に載せる。実値は `.env*`（.gitignore 済み）に置く。ポートはローカル公開のみ
+- **セキュリティ**: 認証情報はローカル開発専用の固定値で、`.env.example` に載せる。実値は `.env*`（.gitignore 済み）に置く。db / mailpit / minio のポートは `127.0.0.1:` にバインドし、同一ネットワークの他端末から到達させない
+- **テストの実行場所**: ホストで `pnpm --filter api test` を実行する前提。`TEST_DATABASE_ADMIN_URL` の既定は `localhost:5432`（db をホストへ公開しているため通る）。コンテナ内で実行する場合は compose の `api` が `TEST_DATABASE_ADMIN_URL` を `db` ホスト宛てに設定する
 - **エラーハンドリング**: `loadConfig` は必須変数が無ければ明示的なメッセージで例外にする。マイグレーション失敗は非ゼロ終了にして compose の api を起動させない
 - **マージ時点のデータ安全**: 本番データは存在せず、業務テーブルも作らない。追加するのは空 DB に対する冪等な `CREATE EXTENSION IF NOT EXISTS` のみ。既存機能（`/health`）は変更しない
 
@@ -61,7 +63,7 @@ export function createTestDatabase(): Promise<TestDatabase>;
 | architectフェーズ段階 | 4BP |
 | builderフェーズ段階 | 5BP |
 
-**作成するファイル**（新規 11、約 450 行。BP 入力値の 12 は据え置く）
+**作成するファイル**（新規 13、約 300 行。上記 11 ファイルに、drizzle-kit が生成する `drizzle/meta/_journal.json` と `drizzle/meta/0000_snapshot.json` を加えた数）
 
 - `docker/Dockerfile.db`（約 15 行）（拡張はマイグレーションで有効化するため、issue.md にあった `db-init` は作らない）
 - `apps/api/drizzle.config.ts`（約 10 行）、`apps/api/drizzle/0000_extensions.sql`（1 行）
@@ -74,8 +76,8 @@ export function createTestDatabase(): Promise<TestDatabase>;
 
 | 項目 | 値 | BP |
 |------|----|----|
-| 新規ファイル数 | 12 | 3（ベース） |
-| 実装行数（テスト含む） | 450 | 2 |
+| 新規ファイル数 | 13 | 3（ベース） |
+| 実装行数（テスト含む） | 300 | 2 |
 | ベースBP（指標の最大値） | — | 3 |
 | 影響ファイル数 | 5 | +1 |
 | 基盤セットアップを含む | あり | +1 |
@@ -86,8 +88,8 @@ export function createTestDatabase(): Promise<TestDatabase>;
 ## 実装ステップ
 
 - [ ] Step 1: 依存パッケージの追加（完了）
-- [ ] Step 2: `docker/Dockerfile.db`・`db-init`・`compose.yaml`（db / mailpit / minio）・`.env.example`
+- [ ] Step 2: `docker/Dockerfile.db`・`compose.yaml`（db / mailpit / minio。ポートは `127.0.0.1:` にバインド）・`.env.example`
 - [ ] Step 3: `config.ts`・`db/client.ts`・`db/schema/index.ts`・`drizzle.config.ts`
-- [ ] Step 4: `0000_extensions.sql` と `db/migrate.ts`、compose の api 起動時マイグレーション
+- [ ] Step 4: `drizzle-kit generate --custom --name extensions` で `0000_extensions.sql` と `drizzle/meta/_journal.json`（journal に載らないと migrator が適用しない）を生成して SQL を書く。`db/migrate.ts`、compose の api 起動時マイグレーション
 - [ ] Step 5: `vitest.config.ts`・`test/db.ts`・`client.test.ts`
 - [ ] Step 6: ローカル検証（typecheck / test / `docker compose up`）
