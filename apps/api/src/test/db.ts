@@ -5,7 +5,8 @@ import { runMigrations } from "../db/migrate.js";
 
 export type TestDatabase = { db: Database; url: string; drop(): Promise<void> };
 
-const DEFAULT_ADMIN_URL = "postgres://postgres:postgres@localhost:5432/postgres";
+const DEFAULT_ADMIN_URL =
+  "postgres://postgres:postgres@localhost:5432/postgres";
 
 /** 管理用 URL のデータベース名だけを差し替えた URL を返す */
 function withDatabase(adminUrl: string, name: string): string {
@@ -14,7 +15,10 @@ function withDatabase(adminUrl: string, name: string): string {
   return url.toString();
 }
 
-async function withAdminClient<T>(adminUrl: string, fn: (client: pg.Client) => Promise<T>): Promise<T> {
+async function withAdminClient<T>(
+  adminUrl: string,
+  fn: (client: pg.Client) => Promise<T>,
+): Promise<T> {
   const client = new pg.Client({ connectionString: adminUrl });
   await client.connect();
   try {
@@ -29,14 +33,18 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   const adminUrl = process.env.TEST_DATABASE_ADMIN_URL || DEFAULT_ADMIN_URL;
   const name = `test_${randomUUID().replaceAll("-", "")}`;
 
-  await withAdminClient(adminUrl, (client) => client.query(`CREATE DATABASE "${name}"`));
+  await withAdminClient(adminUrl, (client) =>
+    client.query(`CREATE DATABASE "${name}"`),
+  );
 
   const url = withDatabase(adminUrl, name);
   let pool: pg.Pool | undefined;
   const dropDatabase = async () => {
     await pool?.end().catch(() => undefined);
     pool = undefined;
-    await withAdminClient(adminUrl, (client) => client.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`));
+    await withAdminClient(adminUrl, (client) =>
+      client.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`),
+    );
   };
 
   try {

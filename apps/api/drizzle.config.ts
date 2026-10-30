@@ -5,6 +5,8 @@ export default defineConfig({
   schema: "./src/db/schema/index.ts",
   out: "./drizzle",
   dbCredentials: {
-    url: process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/litmus_sns",
+    url:
+      process.env.DATABASE_URL ??
+      "postgres://postgres:postgres@localhost:5432/litmus_sns",
   },
 });
