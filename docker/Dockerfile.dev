@@ -1,0 +1,9 @@
+# ローカル開発用。web と api で共用し、compose の command で起動するアプリを切り替える
+FROM node:26.12.0-slim
+RUN npm install -g pnpm@11.5.2
+WORKDIR /repo
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/
+COPY apps/api/package.json apps/api/
+RUN pnpm install --frozen-lockfile
+COPY . .
