@@ -10,7 +10,7 @@
 | buildID | title                                         | BP | dependencies       | issue                        | PR                                                                     |
 | ------- | --------------------------------------------- | --- | ------------------ | ---------------------------- | ---------------------------------------------------------------------- |
 | 1       | ローカル環境とDB基盤                          | 4  | —                  | [issue](./build-01/issue.md) | [#5](https://github.com/tak-solder/litmus-sns-sonnet55-hikyaku/pull/5) |
-| 2       | 共有パッケージ・Biome・CI                     | 5  | 1                  | [issue](./build-02/issue.md) | —                                                                      |
+| 2       | 共有パッケージ・Biome・CI                     | 5  | 1                  | [issue](./build-02/issue.md) | [#6](https://github.com/tak-solder/litmus-sns-sonnet55-hikyaku/pull/6) |
 | 3       | 認証API（登録・ログイン・ログアウト）         | 5  | 2, 26              | [issue](./build-03/issue.md) | —                                                                      |
 | 4       | メール確認API                                 | 5  | 3                  | [issue](./build-04/issue.md) | —                                                                      |
 | 5       | パスワードリセットAPI                         | 4  | 4                  | [issue](./build-05/issue.md) | —                                                                      |
@@ -93,20 +93,20 @@ graph TD
   b17 -.-> b21
   b14 -.-> b21
   b18 -.-> b22
-  b02 -.-> b23
+  b02 --> b23
   b23 -.-> b24
   b22 -.-> b24
   b24 -.-> b25
   b21 -.-> b25
   b20 -.-> b25
-  b02 -.-> b26
+  b02 --> b26
   classDef merged fill:#fbefff,stroke:#8250df,color:#6639ba
   classDef ready fill:#dafbe1,stroke:#1a7f37,color:#116329
   classDef blocked fill:#f6f8fa,stroke:#8c959f,color:#57606a
-  class b01 merged
-  class b02 ready
-  class b03,b04,b05,b06,b07,b08,b09,b10,b11,b12,b13,b14,b15,b16,b17,b18,b19,b20,b21,b22,b23,b24,b25,b26 blocked
-  linkStyle 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33 stroke:#8c959f,stroke-dasharray:5 5
+  class b01,b02 merged
+  class b23,b26 ready
+  class b03,b04,b05,b06,b07,b08,b09,b10,b11,b12,b13,b14,b15,b16,b17,b18,b19,b20,b21,b22,b24,b25 blocked
+  linkStyle 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,28,29,30,31,32 stroke:#8c959f,stroke-dasharray:5 5
 ```
 
 紫: 完了（merged） / 緑: 着手可能（ready） / グレー: 待機中（blocked）。点線は先行ビルドが未完了の依存
