@@ -29,14 +29,14 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   const adminUrl = process.env.TEST_DATABASE_ADMIN_URL || DEFAULT_ADMIN_URL;
   const name = `test_${randomUUID().replaceAll("-", "")}`;
 
-  await withAdminClient(adminUrl, (client) => client.query(`CREATE DATABASE ${name}`));
+  await withAdminClient(adminUrl, (client) => client.query(`CREATE DATABASE "${name}"`));
 
   const url = withDatabase(adminUrl, name);
   let pool: pg.Pool | undefined;
   const dropDatabase = async () => {
     await pool?.end().catch(() => undefined);
     pool = undefined;
-    await withAdminClient(adminUrl, (client) => client.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`));
+    await withAdminClient(adminUrl, (client) => client.query(`DROP DATABASE IF EXISTS "${name}" WITH (FORCE)`));
   };
 
   try {
