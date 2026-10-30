@@ -26,6 +26,7 @@ export type EnvConfig = {
   apiDesiredCount: number;                      // 既定 2（最小 2）
   maxTaskCount: number;                         // オートスケール上限 既定 6
   dbInstanceClass: string;                      // 既定 "t4g.medium"
+  apiPathPattern: string;                       // 既定 "/api/*"
   imageTag: string;                             // context "imageTag"。既定 "latest"
 };
 export function loadConfig(app: App): EnvConfig;
@@ -43,16 +44,15 @@ export class EcrStack extends Stack {
   constructor(scope: Construct, id: string, props?: StackProps);
 }
 
-// infra/lib/secrets.ts
-export function createAppSecrets(scope: Construct): { sessionSecret: secretsmanager.Secret };
-// DB の認証情報は RDS が生成する Secret（DatabaseStack.secret）を使う
+// 秘密情報は DB の認証情報だけ（RDS が生成する Secret = DatabaseStack.secret）。
+// セッションは DB に保存する不透明トークンのハッシュ方式なので、アプリ用の署名鍵は作らない。
 
 // infra/lib/database-stack.ts
 export type DatabaseStackProps = StackProps & { vpc: ec2.IVpc; config: EnvConfig };
 export class DatabaseStack extends Stack {
   readonly instance: rds.DatabaseInstance;      // PostgreSQL 17、Multi-AZ、暗号化、private subnet
   readonly secret: secretsmanager.ISecret;
-  readonly securityGroup: ec2.SecurityGroup;    // 5432 は service SG からだけ許可
+  readonly securityGroup: ec2.SecurityGroup;    // ingress 無しで作る。5432 の許可は ServiceStack が addIngressRule で足す（スタック間の循環参照を避ける）
   constructor(scope: Construct, id: string, props: DatabaseStackProps);
 }
 
@@ -79,10 +79,11 @@ export class ServiceStack extends Stack {
 
 - web / api は Fargate（0.5 vCPU / 1GB）、private subnet に配置し、2 AZ へ分散する（`desiredCount` 2 以上、`minHealthyPercent` 100、`maxHealthyPercent` 200 のローリング）。
 - オートスケールは CPU 60% 目標で最小 2、最大 `maxTaskCount`。
-- ALB のリスナールールは `/api/*` を api、それ以外を web に振る（パスは build-24 の CloudFront と合わせる前提で `config` から変えられる）。ヘルスチェックは api が `/health`、web が `/`。
-- api のコンテナへ `DATABASE_URL` を組み立てるための接続情報を Secrets Manager から注入する（`ecs.Secret.fromSecretsManager`）。プレーンな環境変数に秘密を置かない。`SESSION_SECRET` 相当は `createAppSecrets` で生成する。
+- web と api はそれぞれ別の SG を持つ。DB の 5432 は api の SG だけに許可する（web は DB に触らない）。
+- ALB のリスナールールは `/api/*` を api、それ以外を web に振る（パスは `EnvConfig.apiPathPattern`、既定 `/api/*`。build-24 の CloudFront と合わせる）。ALB の SG は 80 を全許可で作り、CloudFront 経由に限る制限は build-24 で足す（handoff.md に申し送る）。ヘルスチェックは api が `/health`、web が `/`。
+- api のコンテナへ `DATABASE_URL` を組み立てるための接続情報を Secrets Manager から注入する（`ecs.Secret.fromSecretsManager`）。プレーンな環境変数に秘密を置かない。
 - RDS のパラメータグループは family `postgres17`。pg_bigm を `shared_preload_libraries` に含める。
-- `apps/api` が読む環境変数は `DATABASE_URL` と `PORT` のみ（`config.ts` を確認済み）。DB の接続文字列は Secret の host / port / username / password / dbname から ECS の container secrets で個別に渡し、api 起動時の組み立ては build-24 のデプロイ設計で扱う。このビルドでは接続情報の各フィールドを `DB_HOST` 等で渡すところまでとする。
+- `apps/api` が読む環境変数は `DATABASE_URL` と `PORT` のみ（`config.ts` を確認済み）。DB の接続文字列は Secret の host / port / username / password / dbname から ECS の container secrets で個別に渡し、api 起動時の組み立て（`sslmode=require` を含む。RDS は ssl 必須）は build-24 のデプロイ設計で扱い、handoff.md に申し送る。このビルドでは接続情報の各フィールドを `DB_HOST` 等で渡すところまでとする。
 
 ## 非機能要件
 
@@ -96,42 +97,44 @@ export class ServiceStack extends Stack {
 | 段階 | BP |
 |------|----|
 | architectフェーズ段階 | 5BP（分割後。分割前の issue.md の値は 5BP だったが、builder で Dockerfile を含めて再算出すると 8BP） |
-| builderフェーズ段階 | 5BP |
+| builderフェーズ段階 | 6BP |
+
+6BP は `bp_max − 2` 以上だが分割しない。残りを分けても、`config.ts`・`bin/app.ts`・`test/stacks.test.ts` を複数ビルドが同じ箇所で編集することになり、マージコンフリクトが避けられない（build-manager の許容条件）。Dockerfile の分割（build-27）はすでに済んでいる。
 
 **作成するファイル**
 
 - `infra/package.json`（作成済み）, `infra/tsconfig.json`, `infra/cdk.json`, `infra/vitest.config.ts`
 - `infra/bin/app.ts`（約 30 行）, `infra/lib/config.ts`（約 50 行）
-- `infra/lib/network-stack.ts`（約 40 行）, `infra/lib/ecr-stack.ts`（約 40 行）, `infra/lib/secrets.ts`（約 25 行）
+- `infra/lib/network-stack.ts`（約 40 行）, `infra/lib/ecr-stack.ts`（約 40 行）
 - `infra/lib/database-stack.ts`（約 100 行）, `infra/lib/alb.ts`（約 40 行）, `infra/lib/service-stack.ts`（約 200 行）
 - `infra/test/stacks.test.ts`（約 200 行）
 
-変更するファイル: `pnpm-workspace.yaml`（済）, `.gitignore`（`cdk.out`）, `biome.json`（`!infra/cdk.out`）
+変更するファイル: `pnpm-workspace.yaml`（済）, `.gitignore`（`cdk.out`）, `biome.json`（`!infra/cdk.out`）, `docker/Dockerfile.dev`（`COPY infra/package.json infra/`。build-02 の申し送り）
 
 **builderフェーズ段階の内訳**
 
 | 項目 | 値 | BP |
 |------|----|----|
-| 新規ファイル数 | 13 | 3（ベース） |
-| 実装行数（テスト含む） | 750 | 3 |
+| 新規ファイル数 | 12 | 3（ベース） |
+| 実装行数（テスト含む） | 700 | 3 |
 | API操作数 | 未指定 | — |
 | 画面/ページ数 | 未指定 | — |
 | DBテーブル/エンティティ数 | 未指定 | — |
 | ベースBP（指標の最大値） | — | 3 |
-| 影響ファイル数 | 3 | +0 |
+| 影響ファイル数 | 4 | +1 |
 | 基盤セットアップを含む | あり | +1 |
 | 外部API連携を含む | あり | +1 |
 | 既存コードの大規模リファクタ | 未指定 | +0 |
-| **合計** | — | **5BP** |
+| **合計** | — | **6BP** |
 
 ## 実装ステップ
 
-- [ ] Step 1: `infra` の土台（tsconfig / cdk.json / vitest.config.ts / `.gitignore` / `biome.json`）
+- [ ] Step 1: `infra` の土台（tsconfig / cdk.json / vitest.config.ts / `.gitignore` / `biome.json` / `docker/Dockerfile.dev` の COPY 追加）
 - [ ] Step 2: `config.ts` と `bin/app.ts`
-- [ ] Step 3: `network-stack.ts` と `ecr-stack.ts` と `secrets.ts`
+- [ ] Step 3: `network-stack.ts` と `ecr-stack.ts`
 - [ ] Step 4: `database-stack.ts`（Multi-AZ、パラメータグループ、Secret、SG）
 - [ ] Step 5: `alb.ts` と `service-stack.ts`（Fargate web / api、オートスケール、container secrets）
-- [ ] Step 6: `test/stacks.test.ts`（スナップショットと、AZ 分散・Multi-AZ・pg_bigm・Secrets 経由の個別アサーション）
+- [ ] Step 6: `test/stacks.test.ts`（スナップショットと、AZ 分散・Multi-AZ・pg_bigm・Secrets 経由・DB の 5432 の許可元が service SG のみ、の個別アサーション）
 - [ ] Step 7: ローカル検証（`pnpm lint` / `pnpm typecheck` / `pnpm test` / `cdk synth`）
 
 ## 未検証の事項
