@@ -1,0 +1,74 @@
+# ビルドポイント（BP）の基準表 — このワークスペースの持ち物です
+# Hikyaku 2.12.0 の既定値から生成。以後はこのファイルが正で、プラグインを更新しても変わりません。
+#
+# 人間向けの説明は README.md にあります。このファイルを変えたら
+#   hikyaku bp render   README.md の表を再生成する
+#   hikyaku bp test     cases.toml の期待値を確かめる
+# を実行してください。validate が食い違いを検出します。
+
+# 指標の段階に対応する BP。昇順。metrics.*.upper はこれより1つ少ない個数
+levels = [1, 2, 3, 5, 8, 13]
+
+# ベースBP: 各指標の値を upper に当てて BP にし、最大値を採る。
+# 値 <= upper[i] なら levels[i]、すべて超えたら levels の最後。
+# new_files と lines は bp actual が差分から測ります（キーを変えないこと）。
+# 指標は足せます（例: [metrics.migrations]）。キーがそのまま --<キー> になります。
+
+[metrics.new_files]
+label = "新規ファイル数"
+upper = [2, 5, 15, 20, 30]
+
+[metrics.lines]
+label = "実装行数（テスト含む）"
+upper = [200, 500, 1000, 2000, 3000]
+
+[metrics.api_operations]
+label = "API操作数"
+upper = [0, 1, 2, 4, 7]
+
+[metrics.screens]
+label = "画面/ページ数"
+upper = [0, 1, 2, 3, 5]
+
+[metrics.db_entities]
+label = "DBテーブル/エンティティ数"
+upper = [0, 1, 3, 4, 6]
+
+# 加算BP: 該当する要素を足す。書き方は3種類。
+#   flag    bp = 1                      --<キー> が付いていれば +1
+#   per     per = 1, free = 0, cap = 4  1単位につき +1（free まで無料、cap で上限）
+#   tiered  upper = [3, 6], bp = [0, 1, 3]  値 <= upper[i] なら +bp[i]、超えたら最後
+# input = "<指標のキー>" を書くと、その指標の値をそのまま使います（同じ値を二度渡させない）。
+#
+# 例: テーブル1つにつき Entity 設計で +1（DBテーブル数の入力を共有）
+#   [additions.entity_design]
+#   label = "Entity 設計"
+#   input = "db_entities"
+#   per = 1
+#   cap = 4
+#
+# 例: 決済 API を叩くなら +2
+#   [additions.payment_api]
+#   label = "決済APIを叩く"
+#   bp = 2
+
+[additions.impact_files]
+label = "影響ファイル数"
+upper = [3, 6, 10]
+bp = [0, 1, 3, 4]
+examples = "変更の影響を理解するために読み込むファイル。変更するファイルより広い"
+
+[additions.setup]
+label = "基盤セットアップを含む"
+bp = 1
+examples = "ORM導入、UIライブラリ初期化、CI構築"
+
+[additions.external_api]
+label = "外部API連携を含む"
+bp = 1
+examples = "認証プロバイダ、決済API、S3等"
+
+[additions.refactor]
+label = "既存コードの大規模リファクタ"
+bp = 1
+examples = "新規より読み込みコストが大きい"

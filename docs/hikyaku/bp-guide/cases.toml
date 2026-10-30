@@ -1,0 +1,51 @@
+# BP 基準表の期待値テスト — hikyaku bp test が全件を照合します
+#
+# rules.toml を変えたら、その変更を確かめるケースをここに足してください。
+# ケース名は [cases.<名前>] で、失敗時にそのまま表示されます。
+# input のキーは rules.toml の指標・加算要素のキーです（フラグ型は true / false）。
+#
+# 例:
+#   [cases.payment_flow]
+#   description = "決済 API 1本、新規3ファイル"
+#   expect = 4
+#   [cases.payment_flow.input]
+#   new_files = 3
+#   lines = 400
+#   payment_api = true
+
+[cases.minimal]
+description = "1ファイルの小さな修正。最小の BP"
+expect = 1
+[cases.minimal.input]
+new_files = 1
+lines = 80
+
+[cases.base_is_max_of_metrics]
+description = "行数は BP2 だがファイル数が BP3。ベースは最大値を採る"
+expect = 3
+[cases.base_is_max_of_metrics.input]
+new_files = 8
+lines = 400
+
+[cases.additions_stack]
+description = "影響ファイル 7（+3）と基盤セットアップ（+1）が積み上がる"
+expect = 7
+[cases.additions_stack.input]
+new_files = 5
+lines = 800
+impact_files = 7
+setup = true
+
+[cases.split_required]
+description = "新規 25 ファイルで BP8、リファクタ +1 で bp_max 8 を超える"
+expect = 9
+[cases.split_required.input]
+new_files = 25
+lines = 2500
+refactor = true
+
+[cases.boundary_resolved]
+description = "旧ガイドで BP1 と BP2 の両方に載っていた「テーブル1」は BP2 に寄せる"
+expect = 2
+[cases.boundary_resolved.input]
+db_entities = 1
